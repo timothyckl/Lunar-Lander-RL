@@ -63,7 +63,10 @@ Rather than the agent's goal being to maximize the expected return of rewards, i
 The discount rate $\gamma$ is set between 0 and 1. This will discount future rewards and determine the present value of future rewards at time $t$. Discounted return is defined as 
 
 $$
-G_t=R_{t+1}+\gamma R_{t+2}+\gamma^2 R_{t+3}+...\\
+G_t=R_{t+1}+\gamma R_{t+2}+\gamma^2 R_{t+3}+...
+$$
+
+$$
 =\sum_{k=0}^{\infty} \gamma^k R_{t+k+1}
 $$
 
@@ -72,8 +75,14 @@ The effect of adjusting $\gamma$ will make it such that the agent will care more
 We can see from below that returns at successive time steps are related to each other
 
 $$
-G_t=R_{t+1}+\gamma R_{t+2}+\gamma^2 R_{t+3}+\gamma^3 R_{t+4}+... <br/>
-=R_{t+1}+\gamma (R_{t+2}+\gamma R_{t+3}+\gamma^2 R_{t+4}+...)\\
+G_t=R_{t+1}+\gamma R_{t+2}+\gamma^2 R_{t+3}+\gamma^3 R_{t+4}+...
+$$
+
+$$
+=R_{t+1}+\gamma (R_{t+2}+\gamma R_{t+3}+\gamma^2 R_{t+4}+...)
+$$
+
+$$
 =R_{t+1}+\gamma G_{t+1}
 $$
 
@@ -107,7 +116,10 @@ Value functions are defined with respect to specific ways of acting. Since the w
 The V-function gives the expected total return from starting from state $s$ at time $t$ and following policy $\pi$ thereafter and is defined as
 
 $$
-V_\pi (s)=E_\pi[G_t|S_t=s]\\
+V_\pi (s)=E_\pi[G_t|S_t=s]
+$$
+
+$$
 =E_\pi[\sum_{k=0}^\infty \gamma^k R_{t+k+1}|S_t=s]
 $$
 
@@ -116,7 +128,10 @@ $$
 The Q-function captures the expected total future reward an agent in state $s$ at time $t$ can receive by executing a certain action $a$ under policy $\pi$ and is defined as
 
 $$
-Q_\pi (s,a)=E_\pi[G_t|S_t=s,A_t=a]\\
+Q_\pi (s,a)=E_\pi[G_t|S_t=s,A_t=a]
+$$
+
+$$
 =E_\pi[\sum_{k=0}^\infty \gamma^k R_{t+k+1}|S_t=s,A_t=a]
 $$
 
@@ -125,39 +140,39 @@ $$
 In terms of return, a policy $\pi$ is considered to be better than or the same as policy $\pi'$ if the expected return of $\pi$ is greater than or equal to the expected return of $\pi'$ for all states. In other words,
 
 $$
-\pi \geq \pi' \; iff \; v_\pi(s) \geq v_{\pi'}(s) \; for \; all \; s \in S
+\pi \geq \pi' \\; iff \\; v_\pi(s) \geq v_{\pi'}(s) \\; for \\; all \\; s \in S
 $$
 
 A policy that is better than or at least the same as all other policies is called the *optimal policy*.
 
 #### 1.8.1 Optimal V-function
 
-$V_*$ denotes the optimal state-value function and is defined as
+$V_\*$ denotes the optimal state-value function and is defined as
 
 $$
-V_*(s)=\underset{\pi}{\operatorname{max}} V_\pi(s)
+V_\*(s)=\underset{\pi}{\operatorname{max}} V_\pi(s)
 $$
 
-for all $s \in S$. In other words, $V_*$ gives the largest expected return achievable by any policy $\pi$ for each state.
+for all $s \in S$. In other words, $V_\*$ gives the largest expected return achievable by any policy $\pi$ for each state.
 
 #### 1.8.2 Optimal Q-function
-Similarly, $Q_*$ denotes the optimal action-value function is defined as
+Similarly, $Q_\*$ denotes the optimal action-value function is defined as
 
 $$
-Q_*(s,a)=\underset{\pi}{\operatorname{max}} Q_\pi(s,a)
+Q_\*(s,a)=\underset{\pi}{\operatorname{max}} Q_\pi(s,a)
 $$
 
-for all $s \in S$ and $a \in A(s)$. In other words, $Q_*$ gives the largest expected return achievable by any policy $\pi$ for each possible state-action pair.
+for all $s \in S$ and $a \in A(s)$. In other words, $Q_\*$ gives the largest expected return achievable by any policy $\pi$ for each possible state-action pair.
 
 ### 1.9 Bellman Equation
 
 The Bellman Equation states that, for any state-action pair $(s,a)$ at time $t$, the Q-value is going to be the expected reward we get from taking action $a$ in state $s$, which is $R_{t+1}$, plus the maximum expected discounted return that can be achieved from any possible next state-action pair $(s',a')$.
 
 $$
-Q_*(s,a)=E[R_{t+1}+\gamma \underset{a'}{\operatorname{max}} Q_*(s',a')]
+Q_\*(s,a)=E[R_{t+1}+\gamma \underset{a'}{\operatorname{max}} Q_\*(s',a')]
 $$
 
-We can use this equation to find $Q_*$, and in turn determine the optimal policy for any state $s$. All we have to do next is find an action $a$ that maximizes $Q_*(s,a)$.
+We can use this equation to find $Q_\*$, and in turn determine the optimal policy for any state $s$. All we have to do next is find an action $a$ that maximizes $Q_*(s,a)$.
 
 [Additional Resource](https://www.youtube.com/watch?v=14BfO5lMiuk)
 
