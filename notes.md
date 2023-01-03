@@ -159,7 +159,7 @@ for all $s \in S$. In other words, $V_\*$ gives the largest expected return achi
 Similarly, $Q_\*$ denotes the optimal action-value function is defined as
 
 $$
-Q_\*(s,a)=\underset{\pi}{\operatorname{max}} Q_\pi(s,a)
+Q_\{*}(s,a)=\underset{\pi}{\operatorname{max}} Q_\pi(s,a)
 $$
 
 for all $s \in S$ and $a \in A(s)$. In other words, $Q_\*$ gives the largest expected return achievable by any policy $\pi$ for each possible state-action pair.
@@ -169,16 +169,74 @@ for all $s \in S$ and $a \in A(s)$. In other words, $Q_\*$ gives the largest exp
 The Bellman Equation states that, for any state-action pair $(s,a)$ at time $t$, the Q-value is going to be the expected reward we get from taking action $a$ in state $s$, which is $R_{t+1}$, plus the maximum expected discounted return that can be achieved from any possible next state-action pair $(s',a')$.
 
 $$
-Q_\*(s,a)=E[R_{t+1}+\gamma \underset{a'}{\operatorname{max}} Q_\*(s',a')]
+Q_{\*}(s,a)=E[R_{t+1}+\gamma \underset{a'}{\operatorname{max}} Q_{\*}(s',a')]
 $$
 
-We can use this equation to find $Q_\*$, and in turn determine the optimal policy for any state $s$. All we have to do next is find an action $a$ that maximizes $Q_*(s,a)$.
+We can use this equation to find $Q_*$, and in turn determine the optimal policy for any state $s$. All we have to do next is find an action $a$ that maximizes $Q_*(s,a)$.
 
 [Additional Resource](https://www.youtube.com/watch?v=14BfO5lMiuk)
 
 ## 2. Value-Learning (Q-Learning)
 
+The objective of Q-learning is to find a policy that is optimal in the sense that the expected value of the total reward over all successive steps is the maximum achievable. In other words, the goal of Q-learning is to find the optimal policy by learning the optimal Q-values for each state-action pair.
+
+### 2.1 Q-Learning w/ Value Iteration 
+
+Value iteration is an approach that iteratively updates the Q-values for each state-action pair using the Bellman equation until the Q-function converges to the optimal Q-function, $q_{*}$ (see 1.8). 
+
+### 2.2 Q-Tables
+
+Q-tables store Q-values for each state-action pair and the dimensions of the table are the number of actions by the number of states. At the start, agent will no have any information on the environment or the expected rewards for any state-action pair, and all the Q-values in the table are first initialized to zero. 
+
+![](https://i.imgur.com/7OENSkX.png)
+
+### 2.3 Exploration vs Exploitation
+
+*Exploration* is the act of exploring the environment to find out information about it. *Exploitation* is the act of exploiting the information that is already known about the environment in order to maximize the return.
+
+Although exploitation might seem like the best way to maximize returns, that strategy isn't quite right. Which is why we need a balance of both exploitation and exploration. 
+
+#### 2.3.1 Epsilon Greedy Strategy
+
+To get a balance of both strategies, we use the epsilon greedy strategy which defines an exploration rate $\epsilon$ that is initialized to 1.
+
+With $\epsilon=1$, there is a 100% probability that the agent will explore the environment rather than exploit it.
+
+As the agent learns more about the environment, at the start of each new episode, $\epsilon$ will decay by some rate that we set so that the likelihood of exploration becomes less and less probable as the agent learns more and more about the environment.
+
+At each time step, a random number between 0 and 1 is generated. If this number is greater than epsilon, then the agent will choose its next action via exploitation, i.e. it will choose the action with the highest Q-value for its current state from the Q-table. Otherwise, its next action will be chosen via exploration, i.e. randomly choosing its action and exploring what happens in the environment.
+
+```python    
+if random_num > epsilon:
+    # select action by exploitation
+else:
+    # select action by exploration
+```
+
+### 2.4 Q-Value Updation
+
+The optimal Q-value $Q_{*}$ will eventually converge via iteratively comparing the loss between the Q-value and the optimal Q-value for the given state-action pair and then updating the Q-value over and over again each time we encounter this same state-action pair to reduce the loss.
+
+$$
+q_{\*}(s,a)-q(s,a)=loss
+$$
+
+$$
+E[R_{t+1}+\gamma \underset{a'}{\operatorname{max}} Q_*(s',a')]-E[\sum_{k=0}^{\infty}\gamma^k R_{t+k+1}]=loss
+$$
+
+The learning rate $\alpha$ is introduced and set to a value between 0 and 1. It is used to determine how much information we keep about the previously computed Q-value for the given state-action pair versus the new Q-value calculated for the same state-action pair at a later time step. The higher the learning rate, the more quickly the agent will adopt the new Q-value.
+
+$$
+Q^{new}(s,a)=(1-\alpha)\space\underbrace{Q(s,a)}_{\text {old value}}+\overbrace{\alpha(R_{t+1}+\gamma\underset{a'}{\operatorname{max}Q(s',a')})}^{\text {learned value}}
+$$
+
+### 2.5 Deep Q-Learning
+
+
 ## 3. Policy Learning
+
+### 3.1 SARSA
 
 
 
