@@ -1,15 +1,48 @@
-import gymnasium as gym
-
+import os
 import random
+import time
+import imageio
 import numpy as np
-import matplotlib.pyplot as plt
+from PIL import Image
+import PIL.ImageDraw as ImageDraw
+import matplotlib.pyplot as plt 
 from collections import deque, namedtuple
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import MeanSquaredError
+
+# import warning
+import warnings
+warnings.filterwarnings('ignore')
+
+
+class EpisodeSaver:
+    def __init__(self, env, frames, episode_number):
+        self.env = env
+        self.frames = frames
+        self.dir = 'episodes/'
+        self.episode_number = episode_number
+        self.fname = f'episode_{self.episode_number}.gif'
+
+        if not os.path.exists(self.dir):
+            os.mkdir(self.dir)
+
+    def label_frames(self):
+        labeled_frames = []
+
+        for frame in self.frames:
+            img = Image.fromarray(frame)
+            draw = ImageDraw.Draw(img)
+            # draw on each frame
+            draw.text((10, 10), f'Episode: {self.episode_number}', fill=(255, 255, 255))
+            labeled_frames.append(np.array(img))
+
+        return labeled_frames
+
+    def save(self):
+        labeled_frames = self.label_frames()
+        imageio.mimsave(self.dir + self.fname, labeled_frames, fps=60)
 
 
 class ReplayBuffer:
@@ -62,36 +95,37 @@ class Agent:
         self.epsilon_min = 0.01
         self.max_steps_per_episode = 10_000
 
-        self.qnet_local = self.create_qnet()
-        self.qnet_target = self.create_qnet()
+        self.qnet_local = self.create_qnet(name='qnet_local')
+        self.qnet_target = self.create_qnet(name='qnet_target')
 
-    def create_qnet(self):
-        model = Sequential(
+    def create_qnet(self, name):
+        model = Sequential([
             Dense(units=64, activation='relu', input_shape=(self.state_size,)),
             Dense(units=64, activation='relu'),
             Dense(units=64, activation='relu'),
             Dense(units=self.action_size, activation='linear')
-        , name='Q_Network')
+        ], name=name)
 
-        model.compile(loss=MeanSquaredError(), optimizer=Adam(learning_rate=self.lr))
+        model.compile(loss=MeanSquaredError(), optimizer=Adam(learning_rate=self.alpha))
 
         return model
         
     def act(self, state):
         if random.random() > self.epsilon:
             # exploit
-            return np.argmax(self.qnet_local.predict(state))
+            return np.argmax(self.qnet_local.predict(state, verbose=0))
         else:
             # explore
             return self.env.action_space.sample()
 
     def update_local(self):
-        states, actions, rewards, next_states, dones= self.buffer.sample(self.batch_size)
+        # sample a batch of experiences
+        states, actions, rewards, next_states, dones = self.memory.sample(self.batch_size)
 
         # Q(s, a)
-        q_values = self.qnet_local.predict(states)
+        q_values = self.qnet_local.predict(states, verbose=0)
         # Q(s', a')
-        q_values_next = self.qnet_target.predict(next_states)
+        q_values_next = self.qnet_target.predict(next_states, verbose=0)
         q_values_next[dones] = 0.0
         # Q(s, a) = r + gamma * max(Q(s', a'))
         q_values[np.arange(self.batch_size), actions] = rewards + self.gamma * np.max(q_values_next, axis=1)
@@ -103,10 +137,12 @@ class Agent:
         self.qnet_target.set_weights(self.qnet_local.get_weights())
 
     def train(self, num_episodes):
-        for episode in num_episodes:
-            state = self.env.reset()
+        for episode in range(num_episodes):
+            start_time = time.time()
+            state, _ = self.env.reset()
             state = state.reshape(1, self.state_size)
             episode_reward = 0
+            frames = []
 
             for step in range(self.max_steps_per_episode):
                 action = self.act(state)
@@ -114,6 +150,8 @@ class Agent:
                 next_state, reward, done, _, _ = self.env.step(action)
                 next_state = next_state.reshape(1, self.state_size)
                 
+                frames.append(self.env.render())
+
                 # store experience in replay buffer
                 self.memory.append((state, action, reward, next_state, done))
 
@@ -133,8 +171,20 @@ class Agent:
             self.rewards_list.append(episode_reward)
             # decay the epsilon after each episode
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+
             # check for terminal condition
             avg_reward = np.mean(self.rewards_list[-100:])
-            if avg_reward > 200.0:
-                print(f'Environment solved in {episode} episodes with avg reward {avg_reward}')
+            if avg_reward >= 200.0:
+                print(f'Environment solved in {episode + 1} episodes with avg reward {avg_reward}')
                 break
+            
+            print(f'\nEpisode {episode + 1}:\tReward: {episode_reward}\tAvg Reward: {avg_reward}\t\tTime: {(time.time() - start_time):.4f}s')
+
+            # save the last episode as a gif every 10 episodes
+            if ((episode + 1) % 10 == 0) or (episode == 0):
+                saver = EpisodeSaver(self.env, frames, episode + 1)
+                saver.save()
+
+        self.env.close()
+        
+        
