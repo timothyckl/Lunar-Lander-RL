@@ -89,7 +89,6 @@ class Agent:
         self.epsilon_decay = epsilon_decay
         self.update_interval = update_interval
 
-        self.rewards_list = []
         self.memory = ReplayBuffer()
         self.batch_size = 100
         self.epsilon_min = 0.01
@@ -137,11 +136,16 @@ class Agent:
         self.qnet_target.set_weights(self.qnet_local.get_weights())
 
     def train(self, num_episodes):
+        rewards_list = []
+        exploration_rate_list = []
+        steps_per_episode_list = []
+
         for episode in range(num_episodes):
             start_time = time.time()
             state, _ = self.env.reset()
             state = state.reshape(1, self.state_size)
             episode_reward = 0
+            episode_steps = 0
             frames = []
 
             for step in range(self.max_steps_per_episode):
@@ -156,6 +160,7 @@ class Agent:
                 self.memory.append((state, action, reward, next_state, done))
 
                 episode_reward += reward
+                episode_steps += 1
                 state = next_state
 
                 if len(self.memory) > self.batch_size:
@@ -168,23 +173,25 @@ class Agent:
                 if done:
                     break
 
-            self.rewards_list.append(episode_reward)
             # decay the epsilon after each episode
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
+            rewards_list.append(episode_reward)
+            exploration_rate_list.append(self.epsilon)
+            steps_per_episode_list.append(episode_steps)
+
             # check for terminal condition
-            avg_reward = np.mean(self.rewards_list[-100:])
+            avg_reward = np.mean(rewards_list[-100:])
             if avg_reward >= 200.0:
                 print(f'Environment solved in {episode + 1} episodes with avg reward {avg_reward}')
                 break
-            
-            print(f'\nEpisode {episode + 1}:\tReward: {episode_reward}\tAvg Reward: {avg_reward}\t\tTime: {(time.time() - start_time):.4f}s')
 
+            print(f'[Episode: {episode + 1}]\tReward: {episode_reward:.4f}   Avg Reward: {avg_reward:.4f}    Steps: {episode_steps:.0f}    Time: {(time.time() - start_time):.4f}s')
             # save the last episode as a gif every 10 episodes
             if ((episode + 1) % 10 == 0) or (episode == 0):
                 saver = EpisodeSaver(self.env, frames, episode + 1)
                 saver.save()
 
         self.env.close()
-        
-        
+
+        return rewards_list, exploration_rate_list, steps_per_episode_list

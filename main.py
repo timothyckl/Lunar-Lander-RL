@@ -19,4 +19,4 @@ agent = Agent(
 )
 
 if __name__ == '__main__':
-    agent.train(num_episodes=num_episodes)
+    rewards, exploration_rate, steps_per_episode = agent.train(num_episodes=num_episodes)
