@@ -186,7 +186,7 @@ class Agent:
                 print(f'Environment solved in {episode + 1} episodes with avg reward {avg_reward}')
                 break
 
-            print(f'[Episode: {episode + 1}]\tReward: {episode_reward:.4f}   Avg Reward: {avg_reward:.4f}    Steps: {episode_steps:.0f}    Time: {(time.time() - start_time):.4f}s')
+            print(f'\n[Episode: {episode + 1}]\nReward: {episode_reward:.4f}   Avg Reward: {avg_reward:.4f}    Steps: {episode_steps:.0f}    ER: {self.epsilon}    Time: {(time.time() - start_time):.4f}')
             # save the last episode as a gif every 10 episodes
             if ((episode + 1) % 10 == 0) or (episode == 0):
                 saver = EpisodeSaver(self.env, frames, episode + 1)
