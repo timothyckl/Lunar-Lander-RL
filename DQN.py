@@ -102,7 +102,7 @@ class Agent:
     def update_target(self):
         self.qnet_target.set_weights(self.qnet_local.get_weights())
 
-    def train(self, num_episodes=1000):
+    def train(self, num_episodes):
         for episode in num_episodes:
             state = self.env.reset()
             state = state.reshape(1, self.state_size)
@@ -134,3 +134,7 @@ class Agent:
             # decay the epsilon after each episode
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
             # check for terminal condition
+            avg_reward = np.mean(self.rewards_list[-100:])
+            if avg_reward > 200.0:
+                print(f'Environment solved in {episode} episodes with avg reward {avg_reward}')
+                break
