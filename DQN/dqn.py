@@ -46,7 +46,7 @@ class EpisodeSaver:
 
 
 class ReplayBuffer:
-    def __init__(self, max_length=1_000_000):
+    def __init__(self, max_length=1_000):
         self.buffer = deque(maxlen=max_length)
         self.memory = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
 
