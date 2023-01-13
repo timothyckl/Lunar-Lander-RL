@@ -1,5 +1,5 @@
 import gymnasium as gym
-from DQN import Agent
+from dqn import Agent
 
 
 env = gym.make('LunarLander-v2', render_mode='rgb_array')

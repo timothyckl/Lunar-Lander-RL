@@ -178,6 +178,7 @@ class Agent:
                     self.update_target()
 
                 if done:
+                    self.save_weights(f'qnet_local_ep_{episode}.h5')
                     break
 
             # decay the epsilon after each episode
@@ -191,11 +192,10 @@ class Agent:
             avg_reward = np.mean(rewards_list[-100:])
             if avg_reward >= 200.0:
                 print(f'Environment solved in {episode + 1} episodes with avg reward {avg_reward}')
+                self.save_weights(f'qnet_ep_{episode}.h5')
                 break
 
             print(f'\n[Episode: {episode + 1}]\nReward: {episode_reward:.4f}   Avg Reward: {avg_reward:.4f}    Steps: {episode_steps:.0f}    ER: {self.epsilon:.4f}    Time: {(time.time() - start_time):.4f}s')
-            
-            self.save_weights('qnet_local.h5')
 
             # save the last episode as a gif every 10 episodes
             if ((episode + 1) % 10 == 0) or (episode == 0):
