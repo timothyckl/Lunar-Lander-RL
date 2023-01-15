@@ -58,8 +58,8 @@ env = gym.make('LunarLander-v2')
 observation_space = env.observation_space.shape[0]
 action_space = env.action_space.n
 
-num_generations = 10
-population_size = 100  # models per generation
+num_generations = 100
+population_size = 10  # models per generation
 initial_population, model = generate_initial_population(population_size, observation_space, action_space)
 
 fitness_fn = lambda solution: compute_fitness(model, env, solution)
@@ -75,7 +75,7 @@ es = EvolutionStrategy(
     mutation_fn, 
     crossover_fn, 
     selection_fn, 
-    parents_to_keep=10
+    parents_to_keep=5
 )
 
 if __name__ == '__main__':
