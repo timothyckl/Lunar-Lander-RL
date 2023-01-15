@@ -114,7 +114,7 @@ class Agent:
         if not os.path.exists('assets/'):
             os.mkdir('assets/')
 
-        self.qnet_local.save_weights('assets/' + fname)
+        self.qnet_local.save_weights(f'assets/{fname}')
 
     def act(self, state):
         if random.random() > self.epsilon:

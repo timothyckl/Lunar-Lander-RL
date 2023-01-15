@@ -1,11 +1,14 @@
+import numpy as np
+from evolution_strategy.utils import reshape_weights 
+
+
 class Fitness:
-    def __init__(self, model, env, solution):
+    def __init__(self, model, env):
         self.model = model
         self.env = env
-        self.solution = solution
         self.fitness = 0
 
-    def __call__(self):
+    def compute_fitness(self, solution):
         '''
         Compute fitness for a single model.
         '''
@@ -21,4 +24,10 @@ class Fitness:
                 action = np.argmax(self.model.predict(state, verbose=0))
                 state, reward, done, _, _ = self.env.step(action)
                 state = state.reshape(1, state_size)
+
                 self.fitness += reward
+                
+        return self.fitness
+
+    def __call__(self, solution):
+        return self.compute_fitness(solution)

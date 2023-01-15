@@ -12,8 +12,7 @@ class EvolutionStrategy:
         mutation_function,
         crossover_function,
         selection_function,
-        parents_to_keep=0,
-        callbacks=None 
+        parents_to_keep=0
     ):
         self.population = initial_population
         self.fitness_fn = fitness_function
@@ -21,7 +20,6 @@ class EvolutionStrategy:
         self.crossover_fn = crossover_function
         self.selection_fn = selection_function
         self.parents_to_keep = parents_to_keep
-        self.callbacks = callbacks
         
         self.n_generations = 0
         self.fitness_history = []
@@ -102,4 +100,20 @@ class EvolutionStrategy:
             print(f'Std. fitness: {np.std(self.fitness):.4f}')
             print(f'\nTime elapsed: {time() - start_time:.4f} seconds\n')
 
+        # save weights of the best solution once training is done
+        self.save_weights(self.n_generations, 'best_solution.h5')
+
         return self.best_solution, self.best_fitness
+
+    def save_weights(self, generation, fname):
+        '''
+        Save weights of each generations best solution.
+        '''
+        if not os.path.exists('assets/'):
+            os.mkdir('assets/')
+
+        if not os.path.exists(f'assets/gen_{generation}'):
+            os.mkdir(f'assets/gen_{generation}')
+
+        self.best_solution.save_weights(f'assets/gen_{generation}/{fname}')
+

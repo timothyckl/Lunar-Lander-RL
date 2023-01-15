@@ -1,4 +1,4 @@
-import numpy as np
+import os
 import gymnasium as gym
 
 from evolution_strategy.es import EvolutionStrategy
@@ -6,7 +6,7 @@ from evolution_strategy.fitness import Fitness
 from evolution_strategy.crossover import Crossover
 from evolution_strategy.mutation import Mutation
 from evolution_strategy.selection import Selection
-from evolution_strategy.utils import flatten_weights, reshape_weights 
+from evolution_strategy.utils import flatten_weights
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense
@@ -21,9 +21,9 @@ def generate_initial_population(population_size, observation_space, action_space
 
     for _ in range(population_size):
         input_layer = Input(shape=(observation_space,))
-        fc1 = Dense(64, activation='relu')(input_layer)
-        fc2 = Dense(64, activation='relu')(fc1)
-        fc3 = Dense(64, activation='relu')(fc2)
+        fc1 = Dense(256, activation='relu')(input_layer)
+        fc2 = Dense(256, activation='relu')(fc1)
+        fc3 = Dense(256, activation='relu')(fc2)
         output_layer = Dense(action_space, activation='linear')(fc3)
 
         model = Model(inputs=input_layer, outputs=output_layer, trainable=False)
@@ -33,38 +33,15 @@ def generate_initial_population(population_size, observation_space, action_space
     return initial_population, models[-1]
 
 
-# def compute_fitness(model, env, solution):
-#     '''
-#     Compute fitness for a single model.
-#     '''
-#     fitness = 0
-#     model.set_weights(reshape_weights(model, solution))
-#     state_size = env.observation_space.shape[0]
-
-#     for _ in range(1):
-#         state = env.reset()
-#         state = state[0].reshape(1, state_size)
-#         done = False
-
-#         while not done:
-#             action = np.argmax(model.predict(state, verbose=0))
-#             state, reward, done, _, _ = env.step(action)
-#             state = state.reshape(1, state_size)
-#             fitness += reward
-
-#     return fitness
-
-
-env = gym.make('LunarLander-v2')
+env = gym.make('LunarLander-v2', render_mode='rgb_array')
 observation_space = env.observation_space.shape[0]
 action_space = env.action_space.n
 
-num_generations = 100
-population_size = 10  # models per generation
+num_generations = 50
+population_size = 50  # models per generation
 initial_population, model = generate_initial_population(population_size, observation_space, action_space)
 
-# fitness_fn = lambda solution: compute_fitness(model, env, solution)
-fitness_fn = Fitness(model, env, initial_population)
+fitness_fn = Fitness(model, env)
 mutation_fn = Mutation(type='gaussian', mutation_rate=0.1)
 crossover_fn = Crossover(crossover_rate=0.5)
 selection_fn = Selection(selection_type='rank')
@@ -82,3 +59,5 @@ es = EvolutionStrategy(
 
 if __name__ == '__main__':
     best_solution, best_fitness = es.run(num_generations, log_frequency=log_freq)
+    print(f'\nBest solution: {best_solution}')
+    print(f'Best fitness: {best_fitness}\n')
