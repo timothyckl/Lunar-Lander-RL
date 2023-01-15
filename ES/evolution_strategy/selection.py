@@ -1,5 +1,6 @@
 import numpy as np 
 
+
 class Selection:
     def __init__(self, selection_type='roulette'):
         self.selection_type = selection_type

@@ -35,7 +35,7 @@ class EvolutionStrategy:
         '''
         self.fitness = list(map(self.fitness_fn, self.population))  
         current_best_fitness = np.max(self.fitness)
-        print(f'Current best fitness: {current_best_fitness}')
+        # print(f'Current best fitness: {current_best_fitness}\n')
 
         if self.best_fitness is None or current_best_fitness > self.best_fitness:
             self.best_fitness = current_best_fitness
@@ -56,7 +56,9 @@ class EvolutionStrategy:
         '''
         population_size = len(self.population)
         parent_probability = self.selection_fn(self.fitness)
-        
+
+        # print(f'\nParent probability: {parent_probability}\n')
+
         elites = []
         elite_indices = np.argsort(parent_probability)[:self.parents_to_keep]
 
@@ -86,16 +88,18 @@ class EvolutionStrategy:
         
         self.compute_fitness()  # compute fitness for initial population
         
-        start_time = time()
-
-        for _ in tqdm(range(n_generations)):
+        for _ in range(n_generations):
+            start_time = time()
             self.generate_new_population()
             self.compute_fitness()
             self.n_generations += 1
 
             # if self.num_generations % log_frequency == 0:
-            print(f'[Generation {self.n_generations}]  {time() - start_time:.2f}s')
-            print(f'Best fitness: {self.best_fitness:.2f}')
-            print(f'Average fitness: {np.mean(self.fitness):.2f}')
-            print(f'Std. fitness: {np.std(self.fitness):.2f}')
+            print(f'=================================================')
+            print(f'\n[Generation {self.n_generations}]')
+            print(f'ATB fitness: {self.best_fitness:.4f}')
+            print(f'Avg. fitness: {np.mean(self.fitness):.4f}')
+            print(f'Std. fitness: {np.std(self.fitness):.4f}')
+            print(f'\nTime elapsed: {time() - start_time:.4f} seconds\n')
 
+        return self.best_solution, self.best_fitness
