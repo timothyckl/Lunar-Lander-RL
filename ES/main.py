@@ -2,6 +2,7 @@ import numpy as np
 import gymnasium as gym
 
 from evolution_strategy.es import EvolutionStrategy
+from evolution_strategy.fitness import Fitness
 from evolution_strategy.crossover import Crossover
 from evolution_strategy.mutation import Mutation
 from evolution_strategy.selection import Selection
@@ -32,26 +33,26 @@ def generate_initial_population(population_size, observation_space, action_space
     return initial_population, models[-1]
 
 
-def compute_fitness(model, env, solution):
-    '''
-    Compute fitness for a single model.
-    '''
-    fitness = 0
-    model.set_weights(reshape_weights(model, solution))
-    state_size = env.observation_space.shape[0]
+# def compute_fitness(model, env, solution):
+#     '''
+#     Compute fitness for a single model.
+#     '''
+#     fitness = 0
+#     model.set_weights(reshape_weights(model, solution))
+#     state_size = env.observation_space.shape[0]
 
-    for _ in range(1):
-        state = env.reset()
-        state = state[0].reshape(1, state_size)
-        done = False
+#     for _ in range(1):
+#         state = env.reset()
+#         state = state[0].reshape(1, state_size)
+#         done = False
 
-        while not done:
-            action = np.argmax(model.predict(state, verbose=0))
-            state, reward, done, _, _ = env.step(action)
-            state = state.reshape(1, state_size)
-            fitness += reward
+#         while not done:
+#             action = np.argmax(model.predict(state, verbose=0))
+#             state, reward, done, _, _ = env.step(action)
+#             state = state.reshape(1, state_size)
+#             fitness += reward
 
-    return fitness
+#     return fitness
 
 
 env = gym.make('LunarLander-v2')
@@ -62,7 +63,8 @@ num_generations = 100
 population_size = 10  # models per generation
 initial_population, model = generate_initial_population(population_size, observation_space, action_space)
 
-fitness_fn = lambda solution: compute_fitness(model, env, solution)
+# fitness_fn = lambda solution: compute_fitness(model, env, solution)
+fitness_fn = Fitness(model, env, initial_population)
 mutation_fn = Mutation(type='gaussian', mutation_rate=0.1)
 crossover_fn = Crossover(crossover_rate=0.5)
 selection_fn = Selection(selection_type='rank')
