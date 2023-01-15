@@ -102,7 +102,7 @@ class Agent:
             Dense(units=64, activation='relu', input_shape=(self.state_size,)),
             Dense(units=64, activation='relu'),
             Dense(units=64, activation='relu'),
-            Dense(units=self.action_size, activation='linear')
+            Dense(units=self.action_size, activation='linear')  # linear activation for Q(s, a)
         ], name=name)
 
         model.compile(loss=MeanSquaredError(), optimizer=Adam(learning_rate=self.alpha))
@@ -128,7 +128,7 @@ class Agent:
         # sample a batch of experiences
         states, actions, rewards, next_states, dones = self.memory.sample(self.batch_size)
 
-        # Q(s, a)
+        # Q(s, a) = r
         q_values = self.qnet_local.predict(states, verbose=0)
         # Q(s', a')
         q_values_next = self.qnet_target.predict(next_states, verbose=0)
@@ -178,7 +178,6 @@ class Agent:
                     self.update_target()
 
                 if done:
-                    self.save_weights(f'qnet_local_ep_{episode}.h5')
                     break
 
             # decay the epsilon after each episode
@@ -195,7 +194,7 @@ class Agent:
                 self.save_weights(f'qnet_ep_{episode}.h5')
                 break
 
-            print(f'\n[Episode: {episode + 1}]\nReward: {episode_reward:.4f}   Avg Reward: {avg_reward:.4f}    Steps: {episode_steps:.0f}    ER: {self.epsilon:.4f}    Time: {(time.time() - start_time):.4f}s')
+            print(f'\n[Episode {episode + 1}/{num_episodes}]\nReward: {episode_reward:.4f}   Avg Reward: {avg_reward:.4f}    Steps: {episode_steps:.0f}    ER: {self.epsilon:.4f}    Time: {(time.time() - start_time):.4f}s')
 
             # save the last episode as a gif every 10 episodes
             if ((episode + 1) % 10 == 0) or (episode == 0):
@@ -203,5 +202,7 @@ class Agent:
                 saver.save()
 
         self.env.close()
+        print('Training complete...')
+        self.save_weights(f'qnet_local_ep_{episode}.h5')
 
         return rewards_list, exploration_rate_list, steps_per_episode_list
