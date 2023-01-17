@@ -2,7 +2,7 @@ import os
 import random
 import time
 import numpy as np
-from utils import ReplayBuffer, EpisodeSaver
+from models.utils import ReplayBuffer, EpisodeSaver
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
@@ -140,7 +140,7 @@ class Agent:
 
             # save the last episode as a gif every 10 episodes
             if ((episode + 1) % 10 == 0) or (episode == 0):
-                saver = EpisodeSaver(self.env, frames, episode + 1)
+                saver = EpisodeSaver(self.env, frames, algo='DQN', episode_number=episode + 1)
                 saver.save()
 
         self.env.close()

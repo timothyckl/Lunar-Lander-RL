@@ -8,12 +8,15 @@ from collections import deque, namedtuple
 
 
 class EpisodeSaver:
-    def __init__(self, env, frames, episode_number):
+    def __init__(self, env, frames, algo, episode_number):
         self.env = env
         self.frames = frames
-        self.dir = 'episodes/'
+        self.dir = f'./gifs/{algo}/'
         self.episode_number = episode_number
         self.fname = f'episode_{self.episode_number}.gif'
+
+        if not os.path.exists('./gifs'):
+            os.mkdir('./gifs')
 
         if not os.path.exists(self.dir):
             os.mkdir(self.dir)
