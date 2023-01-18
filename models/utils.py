@@ -1,3 +1,4 @@
+
 import os
 import random
 import numpy as np
@@ -50,7 +51,9 @@ class ReplayBuffer:
         self.buffer.append(experience)
 
     def sample(self, batch_size):
-        # sampled_exp contains a namedtuple
+        '''
+        Sample a batch of experiences from the replay buffer
+        '''
         sampled_exp = random.sample(self.buffer, batch_size)
         states, actions, rewards, next_states, dones = zip(*sampled_exp)
 
@@ -59,5 +62,26 @@ class ReplayBuffer:
             np.array(actions),
             np.array(rewards),
             np.squeeze(next_states),
-            np.array(dones, dtype=np.bool),
+            np.array(dones, dtype=np.bool)
+        )
+
+    def sarsa_sample(self, batch_size):
+        '''
+        Sample a batch of experiences from the replay buffer for SARSA
+        '''
+
+        # overwrite the memory namedtuple
+        self.memory = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'next_action', 'done'])
+        print(self.buffer)
+        sampled_exp = random.sample(self.buffer, batch_size)
+        print(sampled_exp)
+        states, actions, rewards, next_states, next_actions, dones = zip(*sampled_exp)
+
+        return (
+            np.squeeze(states),
+            np.array(actions),
+            np.array(rewards),
+            np.squeeze(next_states),
+            np.array(next_actions),
+            np.array(dones, dtype=np.bool)
         )

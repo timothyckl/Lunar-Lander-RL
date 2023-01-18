@@ -1,3 +1,5 @@
+# redo
+
 import os
 import random
 import time
@@ -12,7 +14,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-class Agent:
+class DQN:
     def __init__(
         self,
         env,  # environment
@@ -20,7 +22,7 @@ class Agent:
         gamma,  # discount factor
         epsilon,  # exploration rate
         epsilon_decay, 
-        update_interval  # update interval for target network
+        update_interval: int = 100 # update interval for target network
     ):
         self.env = env 
         self.action_size = self.env.action_space.n
@@ -112,8 +114,7 @@ class Agent:
                 episode_steps += 1
                 state = next_state
 
-                if len(self.memory) > self.batch_size:
-                    self.update_local()
+                self.update_local()
 
                 # Every k steps, copy actual network weights to the target network weights
                 if step % self.update_interval == 0:
@@ -131,10 +132,10 @@ class Agent:
 
             # check for terminal condition
             avg_reward = np.mean(rewards_list[-100:])
-            if avg_reward >= 200.0:
-                print(f'Environment solved in {episode + 1} episodes with avg reward {avg_reward}')
-                self.save_weights(f'qnet_ep_{episode}.h5')
-                break
+            # if avg_reward >= 200.0:
+            #     print(f'Environment solved in {episode + 1} episodes with avg reward {avg_reward}')
+            #     self.save_weights(f'qnet_ep_{episode}.h5')
+            #     break
 
             print(f'\n[Episode {episode + 1}/{num_episodes}]\nReward: {episode_reward:.4f}   Avg Reward: {avg_reward:.4f}    Steps: {episode_steps:.0f}    ER: {self.epsilon:.4f}    Time: {(time.time() - start_time):.4f}s')
 
