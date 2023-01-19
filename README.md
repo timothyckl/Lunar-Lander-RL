@@ -1,5 +1,7 @@
 # Reinforcement-Learning-CA2
 
+Algorithms in this project were implemented with help from [Reinforcement Learning: An Introduction by Richard S. Sutton and Andrew G. Barto](#http://incompleteideas.net/book/bookdraft2017nov5.pdf)
+
 ## Lunar Lander
 
 ### Action Space
