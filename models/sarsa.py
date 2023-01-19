@@ -52,7 +52,7 @@ class SARSA(DQN):
             rewards_list = []
             exploration_rate_list = []
             steps_per_episode_list = []
-            tqdm_e = tqdm(range(self.max_steps), desc='Episode: ', leave=False, unit='step')
+            tqdm_e = tqdm(range(self.max_steps), desc='Episode {}/{}'.format(episode, n_episodes), leave=False, unit='step')
 
             for step in tqdm_e:
                 next_state, reward, done, _, _ = self.env.step(action)
