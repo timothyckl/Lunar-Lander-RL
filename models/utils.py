@@ -73,7 +73,7 @@ class ReplayBuffer:
         '''
         Sample a batch of experiences from the replay buffer
         '''
-        sampled_experience = random.sample(self.buffer, batch_size)
+        sampled_experience = random.choices(self.buffer, k=batch_size)
         states, actions, rewards, next_states, next_actions, dones = zip(*sampled_experience)
         
         return (

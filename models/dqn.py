@@ -97,7 +97,6 @@ class DQN:
             until S is terminal
         '''
         for episode in range(n_episodes):
-            start_time = time()
             state = self.env.reset()
             state = state[0].reshape(1, self.state_size)
             done = False
@@ -118,8 +117,9 @@ class DQN:
                 if update_qnets:
                     self.memory.append((state, action, reward, next_state, done))
 
-                    # update Q(s, a)
-                    self.update_local()
+                    # if memory is large enough, update local qnet Q(S, A)
+                    if len(self.memory) > self.batch_size:
+                        self.update_local()
 
                     # update target qnet to match local qnet 
                     if step % self.target_update_interval == 0:
