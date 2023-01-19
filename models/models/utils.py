@@ -1,4 +1,3 @@
-
 import os
 import random
 import numpy as np
@@ -37,51 +36,51 @@ class EpisodeSaver:
     def save(self):
         labeled_frames = self.label_frames()
         imageio.mimsave(self.dir + self.fname, labeled_frames, fps=60)
-
+        
 
 class ReplayBuffer:
     def __init__(self, max_length=1_000):
         self.buffer = deque(maxlen=max_length)
-        self.memory = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
+        # self.memory = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
+        # self.SARSA_memory = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'next_action', 'done'])
 
     def __len__(self):
         return len(self.buffer)
 
     def append(self, experience):
+        # check buffer size before appending
+        if len(self.buffer) == self.buffer.maxlen:
+            self.buffer.popleft()
+
         self.buffer.append(experience)
 
     def sample(self, batch_size):
         '''
         Sample a batch of experiences from the replay buffer
         '''
-        sampled_exp = random.sample(self.buffer, batch_size)
-        states, actions, rewards, next_states, dones = zip(*sampled_exp)
-
+        sampled_experience = random.choices(self.buffer, k=batch_size)
+        states, actions, rewards, next_states, dones = zip(*sampled_experience)
+        
         return (
-            np.squeeze(states),
-            np.array(actions),
-            np.array(rewards),
-            np.squeeze(next_states),
-            np.array(dones, dtype=np.bool)
+            np.squeeze(np.array(states)),
+            np.squeeze(np.array(actions)),
+            np.squeeze(np.array(rewards)),
+            np.squeeze(np.array(next_states)),
+            np.squeeze(np.array(dones, dtype=np.bool))
         )
-
-    def sarsa_sample(self, batch_size):
+    
+    def sample_SARSA(self, batch_size):
         '''
-        Sample a batch of experiences from the replay buffer for SARSA
+        Sample a batch of experiences from the replay buffer
         '''
-
-        # overwrite the memory namedtuple
-        self.memory = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'next_action', 'done'])
-        print(self.buffer)
-        sampled_exp = random.sample(self.buffer, batch_size)
-        print(sampled_exp)
-        states, actions, rewards, next_states, next_actions, dones = zip(*sampled_exp)
-
+        sampled_experience = random.sample(self.buffer, batch_size)
+        states, actions, rewards, next_states, next_actions, dones = zip(*sampled_experience)
+        
         return (
-            np.squeeze(states),
-            np.array(actions),
-            np.array(rewards),
-            np.squeeze(next_states),
-            np.array(next_actions),
-            np.array(dones, dtype=np.bool)
+            np.squeeze(np.array(states)),
+            np.squeeze(np.array(actions)),
+            np.squeeze(np.array(rewards)),
+            np.squeeze(np.array(next_states)),
+            np.squeeze(np.array(next_actions)),
+            np.squeeze(np.array(dones, dtype=np.bool))
         )

@@ -1,0 +1,153 @@
+import numpy as np 
+from time import time
+from random import random
+from tqdm import tqdm
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.losses import MeanSquaredError
+from tensorflow.keras.optimizers import Adam
+from .utils import ReplayBuffer, EpisodeSaver
+
+
+class DQN:
+    def __init__(self, env, discount, learning_rate, exploration, exploration_decay, exploration_min=0.01, target_update_interval=100):
+        self.env = env
+        self.state_size = env.observation_space.shape[0]
+        self.action_size = env.action_space.n
+        self.discount = discount
+        self.learning_rate = learning_rate
+        self.exploration = exploration
+        self.exploration_decay = exploration_decay
+        self.exploration_min = exploration_min
+
+        self.batch_size = 32
+        self.memory = ReplayBuffer()
+        self.max_steps = 1000
+
+        # we use two networks: one for training and one for target
+        # this is to stabilize the Q-learning algorithm
+        # source: https://ai.stackexchange.com/questions/6982/why-does-dqn-require-two-different-networks
+        self.qnet_local = self.create_qnet(name='qnet_local')
+        self.qnet_target = self.create_qnet(name='qnet_target')
+        self.target_update_interval = target_update_interval
+
+    def create_qnet(self, name):
+        model = Sequential([
+            Dense(units=64, activation='relu', input_shape=(self.state_size,)),
+            Dense(units=64, activation='relu'),
+            Dense(units=64, activation='relu'),
+            Dense(units=self.action_size, activation='linear')  # linear activation for Q(s, a)
+        ], name=name)
+
+        model.compile(loss=MeanSquaredError(), optimizer=Adam(learning_rate=self.learning_rate))
+
+        return model
+    
+    def act(self, state):
+        '''
+        Epsilon-greedy policy is used to choose action.
+        This means that if we choose to exploit, we choose the action with the highest Q-value.
+        '''
+        if random() > self.exploration:
+            # exploit
+            return np.argmax(self.qnet_local.predict_on_batch(state))
+        else:
+            # explore
+            return self.env.action_space.sample()
+
+    def update_local(self):
+        '''
+        Q(S, A) ← Q(S, A) + α[R + γmax_a'Q(S', a) - Q(S, A)]
+
+        where 
+        - Q(S, A) is being updated
+        - Q(s, a) is the current Q-value
+        - R + γmax_a'Q(S', a) is the target Q-value
+        '''
+        # sample randomly from memory to prevent correlation
+        state, action, reward, next_state, done = self.memory.sample(self.batch_size)
+
+        # print(type(state), type(action), type(reward), type(next_state), type(done))
+        target = self.qnet_local.predict_on_batch(state)  # Q(s, a)
+        next_q_values = self.qnet_target.predict_on_batch(next_state)  # max_a'Q(S', a)
+        target[range(self.batch_size), action] = reward + self.discount * \
+                np.amax(next_q_values, axis=1) * (1 - done)  # R + γmax_a'Q(S', a)
+
+        self.qnet_local.fit(state, target, epochs=1, verbose=0)  # update Q(s, a)
+
+    def update_target(self):
+        '''
+        Update target network's weights with local network's weights
+        source: https://ai.stackexchange.com/questions/21984/in-deep-q-learning-are-the-target-update-frequency-and-the-batch-training-frequ
+        '''
+        self.qnet_target.set_weights(self.qnet_local.get_weights())
+
+    def train(self, n_episodes, update_qnets=True):
+        '''
+        ---------------------------------------------------------
+        Q-learning (off-policy TD control) for estimating π ≈ π∗
+        ---------------------------------------------------------
+        Repeat (for each episode):
+            Initialize S
+            Repeat (for each step in episode):
+                Choose A from S using policy derived from Q (e.g., ε-greedy) 
+                Take action A, observe R, S'
+                Update Q(S, A) ← Q(S, A) + α[R + γmax_a'Q(S', a) - Q(S, A)]
+                Update S ← S'
+            until S is terminal
+        '''
+        for episode in range(n_episodes):
+            start_time = time()
+            state = self.env.reset()
+            state = state[0].reshape(1, self.state_size)
+            done = False
+            episode_reward = 0
+            episode_steps = 0
+            frames = []
+            rewards_list = []
+            exploration_rate_list = []
+            steps_per_episode_list = []
+            tqdm_e = tqdm(range(self.max_steps), desc='Episode {}/{}'.format(episode, n_episodes), leave=False, unit='step')
+
+            for step in tqdm_e:
+                action = self.act(state)
+                next_state, reward, done, _, _ = self.env.step(action)
+                next_state = next_state.reshape(1, self.state_size)
+                frames.append(self.env.render())
+
+                if update_qnets:
+                    self.memory.append((state, action, reward, next_state, done))
+
+                    # update Q(s, a)
+                    self.update_local()
+
+                    # update target qnet to match local qnet 
+                    if step % self.target_update_interval == 0:
+                        self.update_target()
+
+                # update state
+                state = next_state
+                episode_reward += reward
+                episode_steps += 1
+
+                rewards_list.append(episode_reward)
+                exploration_rate_list.append(self.exploration)
+                steps_per_episode_list.append(episode_steps)
+
+                if done:
+                    break
+
+            # update exploration rate
+            self.exploration = max(self.exploration_min, self.exploration * self.exploration_decay)
+
+            # print progress
+            # print(f'[Episode {episode + 1}/{n_episodes}] Reward: {episode_reward:.4f} | Steps: {episode_steps} | Exploration: {self.exploration:.4f} | Time(s): {time() - start_time:.4f}')
+
+            # save the last episode as a gif every 10 episodes
+            if ((episode + 1) % 10 == 0) or (episode == 0):
+                saver = EpisodeSaver(self.env, frames, algo='DQN', episode_number=episode + 1)
+                saver.save()
+
+        self.env.close()
+
+        return rewards_list, exploration_rate_list, steps_per_episode_list
