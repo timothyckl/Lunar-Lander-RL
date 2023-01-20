@@ -14,18 +14,21 @@ class SARSA(DQN):
         super().__init__(env, discount, learning_rate, exploration, exploration_decay)
         self.qnet_local = self.create_qnet(name='qnet_local')
         self.qnet_target = self.create_qnet(name='qnet_target')
+        
 
     def update_local(self):
         state, action, reward, next_state, next_action, done = self.memory.sample_SARSA(self.batch_size)
-        state = state.reshape((self.batch_size, self.state_size))
-        next_state = next_state.reshape((self.batch_size, self.state_size))
 
-        target = reward + self.discount * self.qnet_target.predict_on_batch(next_state) * (1 - done)
-        target_vec = self.qnet_local.predict_on_batch(state)
-        indices = np.array([i for i in range(self.batch_size)])
-        target_vec[[indices], [action]] = target
+        next_actions_mask = np.tile(np.arange(self.action_size), (self.batch_size, 1)) == \
+            np.tile(next_action.reshape(self.batch_size, 1), (1, self.action_size))
 
-        self.qnet_local.fit(state, target, epochs=1, verbose=0)  # update Q(s, a)x
+        target = reward + self.discount * np.sum(self.qnet_target.predict_on_batch(next_state) * next_actions_mask, axis=1) * (1 - done)
+        target_vector = self.qnet_local.predict_on_batch(state)
+        idx = [i for i in range(self.batch_size)]
+        target_vector[idx, action] = target
+
+        self.qnet_local.fit(state, target_vector, verbose=0)
+
 
     def train(self, n_episodes, update_qnets=True):
         '''
@@ -43,6 +46,7 @@ class SARSA(DQN):
             until S is terminal
         '''
         for episode in range(n_episodes):
+            start_time = time()
             state = self.env.reset()
             state = state[0].reshape(1, self.state_size)
             action = self.act(state)
@@ -53,12 +57,13 @@ class SARSA(DQN):
             rewards_list = []
             exploration_rate_list = []
             steps_per_episode_list = []
-            tqdm_e = tqdm(range(self.max_steps), desc='Episode {}/{}'.format(episode, n_episodes), leave=False, unit='step')
+            # tqdm_e = tqdm(range(self.max_steps), desc='Episode {}/{}'.format(episode, n_episodes), leave=False, unit='step')
 
-            for step in tqdm_e:
+            for step in range(self.max_steps):
                 next_state, reward, done, _, _ = self.env.step(action)
                 next_state = next_state.reshape(1, self.state_size)
                 next_action = self.act(next_state)
+                frame = self.env.render()
 
                 if update_qnets:
                     self.memory.append((state, action, reward, next_state, next_action, done))
@@ -77,12 +82,15 @@ class SARSA(DQN):
                 rewards_list.append(episode_reward)
                 exploration_rate_list.append(self.exploration)
                 steps_per_episode_list.append(episode_steps)
+                frames.append(frame)
 
                 if done:
                     break
 
             # update exploration rate
             self.exploration = max(self.exploration_min, self.exploration * self.exploration_decay)
+
+            print(f'[EP {episode + 1}/{n_episodes}]  Rewards: {episode_reward:.4f} | Steps: {episode_steps:.0f} | Eps: {self.exploration:.4f} | Time: {time() - start_time:.4f}s')
 
             # save the last episode as a gif every 10 episodes
             if ((episode + 1) % 10 == 0) or (episode == 0):
