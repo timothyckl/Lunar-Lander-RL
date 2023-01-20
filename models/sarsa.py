@@ -1,3 +1,4 @@
+import numpy as np
 from time import time
 from .dqn import DQN
 from .utils import EpisodeSaver
@@ -19,10 +20,10 @@ class SARSA(DQN):
         state = state.reshape((self.batch_size, self.state_size))
         next_state = next_state.reshape((self.batch_size, self.state_size))
 
-        target = self.qnet_local.predict_on_batch(state)  # Q(s, a)
-        target_next = self.qnet_target.predict_on_batch(next_state)  # Q(s', a')
-        target[range(self.batch_size), action] = reward + self.discount * \
-             target_next[range(self.batch_size), next_action] * (1 - done)
+        target = reward + self.discount * self.qnet_target.predict_on_batch(next_state) * (1 - done)
+        target_vec = self.qnet_local.predict_on_batch(state)
+        indices = np.array([i for i in range(self.batch_size)])
+        target_vec[[indices], [action]] = target
 
         self.qnet_local.fit(state, target, epochs=1, verbose=0)  # update Q(s, a)x
 
