@@ -6,7 +6,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras.optimizers import Adam
-from .utils import ReplayBuffer, EpisodeSaver
+from .utils import ReplayBuffer, PrioritizedBuffer, EpisodeSaver
 
 
 class DQN:
@@ -21,8 +21,11 @@ class DQN:
         self.exploration_min = exploration_min  # minimum exploration rate
         self.with_per = with_per  # prioritized experience replay
 
+        if with_per:
+            self.memory = PrioritizedBuffer()
+
+        self.memory = ReplayBuffer(max_length=10_000)
         self.batch_size = 64
-        self.memory = ReplayBuffer()
         self.max_steps = 1000
 
         # we use two networks: one for training and one for target
@@ -68,13 +71,12 @@ class DQN:
         # sample randomly from memory to prevent correlation
         state, action, reward, next_state, done = self.memory.sample(self.batch_size)
 
-        # print(type(state), type(action), type(reward), type(next_state), type(done))
-        target = self.qnet_local.predict_on_batch(state)  # Q(s, a)
-        next_q_values = self.qnet_target.predict_on_batch(next_state)  # max_a'Q(S', a)
-        target[range(self.batch_size), action] = reward + self.discount * \
-                np.amax(next_q_values, axis=1) * (1 - done)  # R + γmax_a'Q(S', a)
+        targets = reward + self.discount * np.amax(self.qnet_target.predict_on_batch(next_state), axis=1) * (1 - done)  
+        target_vector = self.qnet_local.predict_on_batch(state)
+        idx = np.array([i for i in range(self.batch_size)])
+        target_vector[[idx], [action]] = targets
 
-        self.qnet_local.fit(state, target, epochs=1, verbose=0)  # update Q(s, a)
+        self.qnet_local.fit(state, target_vector, epochs=1, verbose=0)  # update Q(s, a)
 
     def update_target(self):
         '''
@@ -139,7 +141,7 @@ class DQN:
                 if done:
                     break
 
-            print(f'[EP {episode}/{n_episodes}]  Rewards: {episode_reward:.4f} | Steps: {episode_steps:.0f} | Eps: {self.exploration:.4f} | Time: {time() - start_time:.4f}s')
+            print(f'[EP {episode+1}/{n_episodes}]  Rewards: {episode_reward:.4f} | Steps: {episode_steps:.0f} | Eps: {self.exploration:.4f} | Time: {time() - start_time:.4f}s')
 
             # update exploration rate
             self.exploration = max(self.exploration_min, self.exploration * self.exploration_decay)
