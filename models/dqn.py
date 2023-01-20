@@ -10,17 +10,18 @@ from .utils import ReplayBuffer, EpisodeSaver
 
 
 class DQN:
-    def __init__(self, env, discount, learning_rate, exploration, exploration_decay, exploration_min=0.01, target_update_interval=100):
+    def __init__(self, env, discount, learning_rate, exploration, exploration_decay, exploration_min=0.01, target_update_interval=100, with_per=False):
         self.env = env
-        self.state_size = env.observation_space.shape[0]
-        self.action_size = env.action_space.n
-        self.discount = discount
-        self.learning_rate = learning_rate
-        self.exploration = exploration
-        self.exploration_decay = exploration_decay
-        self.exploration_min = exploration_min
+        self.state_size = env.observation_space.shape[0]  # number of possible states
+        self.action_size = env.action_space.n  # number of possible actions
+        self.discount = discount  # discount rate
+        self.learning_rate = learning_rate  # learning rate
+        self.exploration = exploration  # exploration rate
+        self.exploration_decay = exploration_decay  # exploration decay rate
+        self.exploration_min = exploration_min  # minimum exploration rate
+        self.with_per = with_per  # prioritized experience replay
 
-        self.batch_size = 32
+        self.batch_size = 64
         self.memory = ReplayBuffer()
         self.max_steps = 1000
 
@@ -33,9 +34,9 @@ class DQN:
 
     def create_qnet(self, name):
         model = Sequential([
-            Dense(units=64, activation='relu', input_shape=(self.state_size,)),
-            Dense(units=64, activation='relu'),
-            Dense(units=64, activation='relu'),
+            Dense(units=256, activation='relu', input_shape=(self.state_size,)),
+            Dense(units=256, activation='relu'),
+            Dense(units=256, activation='relu'),
             Dense(units=self.action_size, activation='linear')  # linear activation for Q(s, a)
         ], name=name)
 
@@ -106,9 +107,10 @@ class DQN:
             rewards_list = []
             exploration_rate_list = []
             steps_per_episode_list = []
-            tqdm_e = tqdm(range(self.max_steps), desc='Episode {}/{}'.format(episode, n_episodes), leave=False, unit='step')
+            # tqdm_e = tqdm(range(self.max_steps), desc='Episode {}/{}'.format(episode, n_episodes), leave=False, unit='step')
+            start_time = time()
 
-            for step in tqdm_e:
+            for step in range(self.max_steps):
                 action = self.act(state)
                 next_state, reward, done, _, _ = self.env.step(action)
                 next_state = next_state.reshape(1, self.state_size)
@@ -137,12 +139,11 @@ class DQN:
                 if done:
                     break
 
+            print(f'[EP {episode}/{n_episodes}]  Rewards: {episode_reward:.4f} | Steps: {episode_steps:.0f} | Eps: {self.exploration:.4f} | Time: {time() - start_time:.4f}s')
+
             # update exploration rate
             self.exploration = max(self.exploration_min, self.exploration * self.exploration_decay)
-
-            # print progress
-            # print(f'[Episode {episode + 1}/{n_episodes}] Reward: {episode_reward:.4f} | Steps: {episode_steps} | Exploration: {self.exploration:.4f} | Time(s): {time() - start_time:.4f}')
-
+            
             # save the last episode as a gif every 10 episodes
             if ((episode + 1) % 10 == 0) or (episode == 0):
                 saver = EpisodeSaver(self.env, frames, algo='DQN', episode_number=episode + 1)
