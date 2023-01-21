@@ -1,4 +1,5 @@
 import os
+import wandb
 import numpy as np 
 from time import time
 from random import random
@@ -11,7 +12,7 @@ from .utils import ReplayBuffer, PrioritizedBuffer, EpisodeSaver
 
 
 class DQN:
-    def __init__(self, env, discount, learning_rate, exploration, exploration_decay, exploration_min=0.01, target_update_interval=100, with_per=False):
+    def __init__(self, env, discount, learning_rate, exploration, exploration_decay, exploration_min=0.01, target_update_interval=100, with_per=False, log_wandb=False):
         self.env = env
         self.state_size = env.observation_space.shape[0]  # number of possible states
         self.action_size = env.action_space.n  # number of possible actions
@@ -27,7 +28,7 @@ class DQN:
 
         self.memory = ReplayBuffer(max_length=10_000)
         self.batch_size = 64
-        self.max_steps = 1000
+        self.max_steps = 2000
 
         # we use two networks: one for training and one for target
         # this is to stabilize the Q-learning algorithm
@@ -35,6 +36,8 @@ class DQN:
         self.qnet_local = self.create_qnet(name='qnet_local')
         self.qnet_target = self.create_qnet(name='qnet_target')
         self.target_update_interval = target_update_interval
+
+        self.log_wandb = log_wandb
 
     def create_qnet(self, name):
         model = Sequential([
@@ -89,16 +92,24 @@ class DQN:
     def train(self, n_episodes, update_qnets=True):
         '''
         ---------------------------------------------------------
-        Q-learning (off-policy TD control) for estimating π ≈ π∗
+        Deep Q-Learning with Experience Replay
         ---------------------------------------------------------
-        Repeat (for each episode):
-            Initialize S
-            Repeat (for each step in episode):
-                Choose A from S using policy derived from Q (e.g., ε-greedy) 
-                Take action A, observe R, S'
-                Update Q(S, A) ← Q(S, A) + α[R + γmax_a'Q(S', a) - Q(S, A)]
-                Update S ← S'
-            until S is terminal
+        Initialize replay memory D to capacity N
+        Initialize action-value function Q with random weights
+
+        for episode = 1, M do
+            Initialize sequence s1 = {x1} and preprocessed sequence φ1 = φ(s1)
+            for t = 1, T do
+                With probability ε select a random action at
+                otherwise select at = argmaxaQ(φ(st), a; θ)
+                Execute action at in emulator and observe reward rt and new state st+1
+                Set st+1 = st, at and preprocess φt+1 = φ(st+1)
+                Store transition (φt, at, rt, φt+1) in D
+                Sample random minibatch of transitions (φj , aj , rj , φj+1) from D
+                Set yj = rj if the episode ends at j + 1, otherwise yj = rj + γmaxaQ(φj+1, a; θ)
+                Perform a gradient descent step on (yj − Q(φj , aj ; θ))2 with respect to the network parameters θ
+            end for
+        end for
         '''
         for episode in range(n_episodes):
             state = self.env.reset()
@@ -148,11 +159,19 @@ class DQN:
             self.exploration = max(self.exploration_min, self.exploration * self.exploration_decay)
             
             # save the last episode as a gif every 10 episodes
-            if ((episode + 1) % 10 == 0) or (episode == 0):
+            if ((episode + 1) % 100 == 0) or (episode == 0):
                 saver = EpisodeSaver(self.env, frames, algo='DQN', episode_number=episode + 1)
                 saver.save()
 
+            if self.log_wandb:
+                wandb.log({
+                    'rewards': episode_reward,
+                    'steps': episode_steps,
+                    'exploration': self.exploration
+                })
+
         self.env.close()
+        wandb.finish()
 
         return rewards_list, exploration_rate_list, steps_per_episode_list
 
