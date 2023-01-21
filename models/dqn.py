@@ -1,3 +1,4 @@
+import os
 import numpy as np 
 from time import time
 from random import random
@@ -154,3 +155,9 @@ class DQN:
         self.env.close()
 
         return rewards_list, exploration_rate_list, steps_per_episode_list
+
+    def save(self, name):
+        if os.path.exists('assets'):
+            os.makedirs('assets')
+
+        self.qnet_local.save(f'assets/{name}')
