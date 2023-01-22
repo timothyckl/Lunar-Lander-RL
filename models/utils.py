@@ -1,11 +1,8 @@
 import os
-import random
 import numpy as np
 import imageio
 from PIL import Image
 import PIL.ImageDraw as ImageDraw
-from collections import deque, namedtuple
-from .sumTree import SumTree
 
 
 class EpisodeSaver:
@@ -40,121 +37,35 @@ class EpisodeSaver:
         
 
 class ReplayBuffer:
-    def __init__(self, max_length=1_000):
-        self.buffer = deque(maxlen=max_length)
-        
-    def __len__(self):
-        return len(self.buffer)
-
-    def append(self, experience):
-        # check buffer size before appending
-        if len(self.buffer) == self.buffer.maxlen:
-            self.buffer.popleft()
-
-        self.buffer.append(experience)
-
-    def sample(self, batch_size):
-        '''
-        Sample a batch of experiences from the replay buffer
-        '''
-        sampled_experience = random.choices(self.buffer, k=batch_size)
-        states, actions, rewards, next_states, dones = zip(*sampled_experience)
-        
-        return (
-            np.squeeze(np.array(states)),
-            np.squeeze(np.array(actions)),
-            np.squeeze(np.array(rewards)),
-            np.squeeze(np.array(next_states)),
-            np.squeeze(np.array(dones, dtype=np.bool))
-        )
-    
-    def sample_SARSA(self, batch_size):
-        '''
-        Sample a batch of experiences from the replay buffer
-        '''
-        sampled_experience = random.choices(self.buffer, k=batch_size)
-        states, actions, rewards, next_states, next_actions, dones = zip(*sampled_experience)
-        
-        return (
-            np.squeeze(np.array(states)),
-            np.squeeze(np.array(actions)),
-            np.squeeze(np.array(rewards)),
-            np.squeeze(np.array(next_states)),
-            np.squeeze(np.array(next_actions)),
-            np.squeeze(np.array(dones, dtype=np.bool))
-        )
-
-class PrioritizedBuffer:
-    def __init__(self, max_length=1_000, eps=1e-2, alpha=0.1, beta=0.1):
-        self.buffer = SumTree(size=max_length)
-
-        # PER params
-        self.eps = eps  # minimal priority, prevents zero probabilities
-        self.alpha = alpha  # determines how much prioritization is used, α = 0 corresponding to the uniform case
-        self.beta = beta  # determines the amount of importance-sampling correction, b = 1 fully compensate for the non-uniform probabilities
-        self.max_priority = eps  # priority for new samples, init as eps
-
-        self.count = 0
-        self.real_size = 0
+    def __init__(self, max_length, state_size, action_size):
+        self.memory_counter = 0
         self.max_length = max_length
+        self.state_memory = np.zeros((self.max_length, state_size))
+        self.new_state_memory = np.zeros((self.max_length, state_size))
+        self.action_memory = np.zeros((self.max_length, action_size), dtype=np.int8)
+        self.reward_memory = np.zeros(self.max_length)
+        self.done_memory = np.zeros(self.max_length, dtype=np.float32)
 
-    def append(self, experience):
-        '''
-        Append a batch of experiences to the replay buffer
-        '''
-        state, action, reward, next_state, done = experience
+    def append(self, state, action, reward, new_state, done):
+        idx = self.memory_counter % self.max_length
 
-        # store transition index with maximum priority in sum tree
-        self.tree.add(self.max_priority, self.count)
-
-        # store transition in buffer
-        self.buffer[self.count] = (state, action, reward, next_state, done)
-
-        # update count
-        self.count += 1
-        self.real_size = min(self.real_size + 1, self.max_length)
+        self.state_memory[idx] = state
+        actions = np.zeros(self.action_memory.shape[1])
+        actions[action] = 1.0
+        self.action_memory[idx] = actions
+        self.new_state_memory[idx] = new_state
+        self.reward_memory[idx] = reward
+        self.done_memory[idx] = 1 - done
+        self.memory_counter += 1
 
     def sample(self, batch_size):
-        '''
-        Sample a batch of experiences from the replay buffer
-        '''
-        # calculate priority segment
-        priority_segment = self.tree.total() / batch_size
-
-        # calculate importance sampling weights
-        weights = []
-        idxs = []
-        p_min = self.tree.min() / self.tree.total()
-        max_weight = (p_min * self.real_size) ** (-self.beta)
-
-        for i in range(batch_size):
-            # sample a random priority
-            a, b = priority_segment * i, priority_segment * (i + 1)
-            value = random.uniform(a, b)
-
-            # retrieve transition index and priority
-            idx, priority, data = self.tree.get(value)
-            idxs.append(idx)
-
-            # calculate importance sampling weight
-            p_sample = priority / self.tree.total()
-            weight = (p_sample * self.real_size) ** (-self.beta)
-            weights.append(weight / max_weight)
-
-        # convert to numpy arrays
-        weights = np.array(weights, dtype=np.float32)
-        idxs = np.array(idxs, dtype=np.int32)
-
-        # retrieve sampled experiences with corresponding weights
-        states, actions, rewards, next_states, dones = zip(*[self.buffer[idx] for idx in idxs])
-
-        return (
-            np.squeeze(np.array(states)),
-            np.squeeze(np.array(actions)),
-            np.squeeze(np.array(rewards)),
-            np.squeeze(np.array(next_states)),
-            np.squeeze(np.array(dones, dtype=np.bool)),
-        ), weights, idxs
+        max_memory = min(self.memory_counter, self.max_length)
+        sampled_batch = np.random.choice(max_memory, batch_size)
         
+        states= self.state_memory[sampled_batch]
+        actions = self.action_memory[sampled_batch]
+        rewards= self.reward_memory[sampled_batch]
+        new_states = self.new_state_memory[sampled_batch]
+        dones = self.done_memory[sampled_batch]
 
-        
+        return states, actions, rewards, new_states, dones 
