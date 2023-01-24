@@ -47,9 +47,9 @@ class DQL:
         if rand < self.epsilon:
             return np.random.choice(self.action_space)
         else:
-            return np.argmax(self.qnet.predict_on_batch(state))
+            return np.argmax(self.qnet.predict(state, verbose=0))
 
-    def update_qnet(self):
+    def update(self):
         '''
         Q(S, A) ← Q(S, A) + α[R + γmax_a'Q(S', a) - Q(S, A)]
 
@@ -64,8 +64,8 @@ class DQL:
             action_values = np.array(self.action_space, dtype=np.int8)
             action_idx = np.dot(action, action_values)
 
-            q_current = self.qnet.predict_on_batch(state)
-            q_future = self.qnet.predict_on_batch(new_state)
+            q_current = self.qnet.predict(state, verbose=0)
+            q_future = self.qnet.predict(new_state, verbose=0)
             q_target = q_current.copy()
 
             batch_idx = np.arange(self.batch_size, dtype=np.int32)
@@ -73,7 +73,8 @@ class DQL:
 
             self.qnet.fit(x=state, y=q_target, verbose=0)
 
-    def train(self, n_episodes, max_steps=1000, log_wandb=False, update_qnet=True, save_episodes=False, save_interval=10):
+    def train(self, n_episodes, max_steps=1000, log_wandb=False, 
+                update=True, save_episodes=False, save_interval=10):
         '''
         ---------------------------------------------------------
         Deep Q-Learning with Experience Replay
@@ -111,9 +112,9 @@ class DQL:
                 new_state, reward, done, _, _ = self.env.step(action)
                 frames.append(self.env.render())
 
-                if update_qnet:
+                if update:
                     self.remember(state, action, reward, new_state, done)
-                    self.update_qnet()
+                    self.update()
 
                 state = new_state
                 episode_reward += reward
@@ -125,7 +126,11 @@ class DQL:
             self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
 
             if log_wandb:
-                wandb.log({'reward': episode_reward, 'steps': episode_steps, 'epsilon': self.epsilon})
+                wandb.log({
+                    'reward': episode_reward,
+                    'steps': episode_steps, 
+                    'epsilon': self.epsilon
+                })
 
             if save_episodes:
                 if (episode + 1) % save_interval == 0 or (episode == 0):
@@ -139,7 +144,11 @@ class DQL:
             history['steps'].append(episode_steps)
 
         self.env.close()
-        self.save('dqn.h5')
+        
+        if log_wandb:
+            wandb.finish()
+
+        self.save('dql.h5')
 
         return history
     
@@ -147,7 +156,7 @@ class DQL:
         if not os.path.exists('./assets'):
             os.mkdir('./assets')
 
-        self.qnet.save('./assets/' + fname)
+        self.qnet.save(f'./assets/{fname}')
 
     def load(self, fname):
-        self.qnet = load_model('./assets/' + fname)
+        self.qnet = load_model(f'./assets/{fname}')
