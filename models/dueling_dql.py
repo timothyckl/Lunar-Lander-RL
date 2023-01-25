@@ -8,9 +8,9 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
 from .utils import ReplayBuffer, EpisodeSaver
 
-class DuelingDeepQNetwork(Model):
+class DuelingDQN(Model):
     def __init__(self, n_actions):
-        super(DuelingDeepQNetwork, self).__init__()
+        super(DuelingDQN, self).__init__()
         self.dense1 = Dense(128, activation='relu')
         self.dense2 = Dense(128, activation='relu')
         self.V = Dense(1, activation='linear')
@@ -66,8 +66,8 @@ class DuelingDQL:
 
         self.update_counter = 0
         self.memory = Buffer(mem_size, self.state_size, self.action_size)
-        self.q_eval = DuelingDeepQNetwork(self.action_size)
-        self.q_next = DuelingDeepQNetwork(self.action_size)
+        self.q_eval = DuelingDQN(self.action_size)
+        self.q_next = DuelingDQN(self.action_size)
 
         self.q_eval.compile(optimizer=Adam(learning_rate=alpha), loss='mse')
 
