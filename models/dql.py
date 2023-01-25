@@ -72,6 +72,7 @@ class DQL:
             q_target[batch_idx, action_idx] = reward + self.gamma * np.max(q_future, axis=1) * done
 
             self.qnet.fit(x=state, y=q_target, verbose=0)
+            self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
 
     def train(self, n_episodes, max_steps=1000, log_wandb=False, 
                 update=True, save_episodes=False, save_interval=10):
@@ -123,7 +124,7 @@ class DQL:
                 if done:
                     break
 
-            self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
+            # self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
 
             if log_wandb:
                 wandb.log({

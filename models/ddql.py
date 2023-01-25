@@ -70,6 +70,7 @@ class DDQL:
         q_target[batch_idx, action_values] = rewards + self.gamma * q_future[batch_idx, max_actions.astype(int)] * dones
 
         self.qnet_local.fit(states, q_target, verbose=0)
+        self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
 
         if self.memory.memory_counter % self.update_target_interval == 0:
             self.update_target()
@@ -106,7 +107,7 @@ class DDQL:
                 if done:
                     break
 
-            self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
+            # self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
 
             if log_wandb:
                 wandb.log({

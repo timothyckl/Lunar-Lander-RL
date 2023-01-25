@@ -51,7 +51,7 @@ class Buffer(ReplayBuffer):
 
 class DuelingDQL:
     def __init__(self, env, alpha, gamma, epsilon, batch_size=64,
-                epsilon_dec=1e-3, eps_end=0.01, 
+                epsilon_decay=1e-3, epsilon_min=0.01, 
                  mem_size=10_000, replace=100):
         self.env = env
         self.state_size = self.env.observation_space.shape[0]
@@ -59,8 +59,8 @@ class DuelingDQL:
         self.action_space = [i for i in range(self.action_size)]
         self.gamma = gamma
         self.epsilon = epsilon
-        self.eps_dec = epsilon_dec
-        self.eps_min = eps_end
+        self.epsilon_decay = epsilon_decay
+        self.epsilon_min = epsilon_min
         self.replace = replace
         self.batch_size = batch_size
 
@@ -91,7 +91,7 @@ class DuelingDQL:
             return
 
         if self.update_counter % self.replace == 0:
-            self.q_next.set_weights(self.q_eval.get_weights())
+            self.update_target()
 
         states, actions, rewards, states_, dones = self.memory.sample(self.batch_size)
 
@@ -106,10 +106,12 @@ class DuelingDQL:
 
         self.q_eval.train_on_batch(states, q_target)
 
-        self.epsilon = self.epsilon - self.eps_dec if self.epsilon > \
-                        self.eps_min else self.eps_min
+        self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
 
         self.update_counter += 1
+
+    def update_target(self):
+        self.q_next.set_weights(self.q_eval.get_weights())
 
     def train(self, n_episodes, max_steps, log_wandb=False, 
               update=True, save_episodes=False, save_interval=100):
