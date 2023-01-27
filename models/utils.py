@@ -37,22 +37,32 @@ class EpisodeSaver:
         
 
 class ReplayBuffer:
-    def __init__(self, max_length, state_size, action_size):
+    def __init__(self, max_length, state_size, action_size, is_sarsa=False):
+        self.is_sarsa = is_sarsa
         self.memory_counter = 0
         self.max_length = max_length
         self.state_memory = np.zeros((self.max_length, state_size))
         self.new_state_memory = np.zeros((self.max_length, state_size))
         self.action_memory = np.zeros((self.max_length, action_size), dtype=np.int8)
+        if is_sarsa:
+            self.new_action_memory = np.zeros((self.max_length, action_size), dtype=np.int8)
         self.reward_memory = np.zeros(self.max_length)
         self.done_memory = np.zeros(self.max_length, dtype=np.float32)
 
-    def append(self, state, action, reward, new_state, done):
+    def append(self, state, action, reward, new_state, done, new_action=None):
         idx = self.memory_counter % self.max_length
 
         self.state_memory[idx] = state
+        
         actions = np.zeros(self.action_memory.shape[1])
         actions[action] = 1.0
         self.action_memory[idx] = actions
+
+        if self.is_sarsa:
+            new_actions = np.zeros(self.action_memory.shape[1])
+            new_actions[new_action] = 1.0
+            self.new_action_memory[idx] = new_actions
+
         self.new_state_memory[idx] = new_state
         self.reward_memory[idx] = reward
         self.done_memory[idx] = 1 - done
@@ -66,6 +76,11 @@ class ReplayBuffer:
         actions = self.action_memory[sampled_batch]
         rewards= self.reward_memory[sampled_batch]
         new_states = self.new_state_memory[sampled_batch]
+        if self.is_sarsa:
+            new_actions = self.new_action_memory[sampled_batch]
         dones = self.done_memory[sampled_batch]
 
-        return states, actions, rewards, new_states, dones 
+        if not self.is_sarsa:
+            return states, actions, rewards, new_states, dones 
+        else:
+            return states, actions, rewards, new_states, new_actions, dones
