@@ -68,7 +68,8 @@ class SARSA:
             self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
 
 
-    def train(self, n_episodes, max_steps=1000):
+    def train(self, n_episodes, max_steps=1000,log_wandb=False, 
+                update=True, save_episodes=False, save_interval=10):
         history = {'reward': [], 'avg_reward_100': [], 'steps': []}
 
         for episode in range(n_episodes):
@@ -85,9 +86,11 @@ class SARSA:
             for _ in range(max_steps):
                 new_state, reward, done, _, _ = self.env.step(action)
                 new_action = self.act(new_state)
-
-                self.update()
-                self.remember(state, action, reward, new_state, done, new_action)
+                frames.append(self.env.render())
+                
+                if update:
+                    self.update()
+                    self.remember(state, action, reward, new_state, done, new_action)
 
                 state = new_state
                 action = new_action
@@ -96,6 +99,18 @@ class SARSA:
 
                 if done:
                     break
+                    
+            if log_wandb:
+                wandb.log({
+                    'reward': episode_reward,
+                    'steps': episode_steps, 
+                    'epsilon': self.epsilon
+                })
+                
+            if save_episodes:
+                if (episode + 1) % save_interval == 0 or (episode == 0):
+                    s = EpisodeSaver(self.env, frames, 'SARSA', episode + 1)
+                    s.save()
                 
             print(f'[EP {episode + 1}/{n_episodes}] - Reward: {episode_reward:.4f} - Steps: {episode_steps} - Eps: {self.epsilon:.4f} - Time: {time() - start_time:.2f}s')
 
@@ -103,4 +118,20 @@ class SARSA:
             history['avg_reward_100'].append(np.mean(history['reward'][-100:]))
             history['steps'].append(episode_steps)
 
+        self.env.close()
+        
+        if log_wandb:
+            wandb.finish()
+            
+        self.save('sarsa.h5')
+        
         return history
+
+    def save(self, fname):
+        if not os.path.exists('./assets'):
+            os.mkdir('./assets')
+
+        self.dsn.save(f'./assets/{fname}')
+
+    def load(self, fname):
+        self.dsn = load_model(f'./assets/{fname}')
