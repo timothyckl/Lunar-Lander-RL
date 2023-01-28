@@ -68,6 +68,48 @@ class DuelingSARSA:
 
         states, actions, rewards, new_states, new_actions, dones = self.memory.sample(self.batch_size)
 
+        q_values = self.ddsn(states)
+        q_next = self.target_ddsn(new_states)
+        q_target = q_values.numpy()
+
+        for idx, terminal in enumerate(dones):
+            if terminal:
+                q_target[idx] = 0
+            q_target[idx, actions[idx]] = rewards[idx] + self.gamma * q_next[idx, new_actions[idx]]
+
+        self.ddsn.train_on_batch(states, q_target)
+        self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
+        self.update_counter += 1
 
     def update_target(self):
         self.target_ddsn.set_weights(self.ddsn.get_weights())
+
+    def train(self, n_episodes, max_steps):
+        
+        
+        for episode in range(n_episodes):
+            state = self.env.reset()
+            state = state[0]
+            action = self.act(state)
+            done = False
+            episode_reward = 0
+            episode_steps = 0
+
+            for _ in range(max_steps):
+                new_state, reward, done, _, _ = self.env.step(action)
+                new_action = self.act(new_state)
+
+                self.remember(state, action, reward, new_state, new_action, done)  
+                self.update()
+
+                state = new_state
+                action = new_action
+                episode_reward += reward
+                episode_steps += 1
+
+                if done:
+                    break
+
+                print(f'[EP {episode + 1}/{n_episodes}] - Reward: {episode_reward:.4f} - Steps: {episode_steps} - Eps: {self.epsilon:.4f} - Time: {time() - start_time:.2f}s')
+
+        self.env.close()

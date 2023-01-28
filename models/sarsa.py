@@ -89,8 +89,8 @@ class SARSA:
                 frames.append(self.env.render())
                 
                 if update:
-                    self.update()
                     self.remember(state, action, reward, new_state, done, new_action)
+                    self.update()
 
                 state = new_state
                 action = new_action
