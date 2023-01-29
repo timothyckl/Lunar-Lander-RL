@@ -8,7 +8,8 @@ from tensorflow.keras.optimizers import Adam
 from .utils import ReplayBuffer, EpisodeSaver
 
 class SARSA:
-    def __init__(self, env, alpha, gamma, epsilon, epsilon_decay=0.99, epsilon_min=0.01, batch_size=64):
+    def __init__(self, env, alpha, gamma, epsilon, epsilon_decay=0.99, epsilon_min=0.01, 
+                 batch_size=64, random_engine_fail=False, engine_fail_prob=0.5, fname='SARSA'):
         self.env = env 
         self.action_size = self.env.action_space.n
         self.action_space = [i for i in range(self.action_size)]
@@ -19,6 +20,9 @@ class SARSA:
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
         self.batch_size = batch_size
+        self.random_engine_fail = random_engine_fail
+        self.engine_fail_prob = engine_fail_prob
+        self.fname = fname
         self.memory = ReplayBuffer(10_000, self.state_size, self.action_size, is_sarsa=True)
         self.dsn = self.create_dsn('dsn')
 
@@ -58,8 +62,8 @@ class SARSA:
             new_action_values = np.array(self.action_space, dtype=np.int8)
             new_action_idx = np.dot(new_actions, new_action_values)
 
-            q_values = self.dsn.predict(state)
-            q_values_next = self.dsn.predict(new_state)
+            q_values = self.dsn.predict(state, verbose=0)
+            q_values_next = self.dsn.predict(new_state, verbose=0)
 
             q_update = reward + self.gamma * q_values_next[np.arange(self.batch_size), new_action_idx] * done
             q_values[np.arange(self.batch_size), action_idx] = q_update
@@ -81,11 +85,27 @@ class SARSA:
 
             state = self.env.reset()
             state = state[0]
-            action = self.act(state)
+            # if self.random_engine_fail is true, then there is 
+            # a self.engine_fail_prob chance that the engine will fail
+            # else, the agent will act as normal
+            if self.random_engine_fail:
+                if np.random.random() < self.engine_fail_prob:
+                    action = 0
+                else:
+                    action = self.act(state)
+            else:
+                action = self.act(state)
 
             for _ in range(max_steps):
                 new_state, reward, done, _, _ = self.env.step(action)
-                new_action = self.act(new_state)
+                if self.random_engine_fail:
+                    if np.random.random() < self.engine_fail_prob:
+                        new_action = 0
+                    else:
+                        new_action = self.act(state)
+                else:
+                    new_action = self.act(state)
+
                 frames.append(self.env.render())
                 
                 if update:
@@ -109,7 +129,7 @@ class SARSA:
                 
             if save_episodes:
                 if (episode + 1) % save_interval == 0 or (episode == 0):
-                    s = EpisodeSaver(self.env, frames, 'SARSA', episode + 1)
+                    s = EpisodeSaver(self.env, frames, self.fname, episode + 1)
                     s.save()
                 
             print(f'[EP {episode + 1}/{n_episodes}] - Reward: {episode_reward:.4f} - Steps: {episode_steps} - Eps: {self.epsilon:.4f} - Time: {time() - start_time:.2f}s')
@@ -123,7 +143,7 @@ class SARSA:
         if log_wandb:
             wandb.finish()
             
-        self.save('sarsa.h5')
+        self.save(f'{self.fname}.h5')
         
         return history
 

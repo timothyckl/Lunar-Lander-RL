@@ -9,7 +9,8 @@ from .utils import ReplayBuffer, EpisodeSaver
 
 
 class DQL:
-    def __init__(self, env, alpha, gamma, epsilon, epsilon_decay=0.99, epsilon_min=0.01, batch_size=64):
+    def __init__(self, env, alpha, gamma, epsilon, epsilon_decay=0.99, epsilon_min=0.01, 
+                 batch_size=64, random_engine_fail=False, engine_fail_prob=0.5, fname='DQL'):
         self.env = env 
         self.action_size = self.env.action_space.n
         self.action_space = [i for i in range(self.action_size)]
@@ -20,6 +21,9 @@ class DQL:
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
         self.batch_size = batch_size
+        self.random_engine_fail = random_engine_fail
+        self.engine_fail_prob = engine_fail_prob
+        self.fname = fname
         self.memory = ReplayBuffer(10_000, self.state_size, self.action_size)
         self.qnet = self.create_qnet('qnet')
 
@@ -42,9 +46,9 @@ class DQL:
         This means that if we choose to exploit, we choose the action with the highest Q-value.
         '''
         state = np.reshape(state, [1, self.state_size])
-        rand = np.random.random()
-        
-        if rand < self.epsilon:
+        act_rand = np.random.random()  # random number to determine if we should explore or exploit
+
+        if act_rand < self.epsilon:
             return np.random.choice(self.action_space)
         else:
             return np.argmax(self.qnet.predict(state, verbose=0))
@@ -109,7 +113,17 @@ class DQL:
             frames = []
 
             for _ in range(max_steps):
-                action = self.act(state)
+                # if self.random_engine_fail is true, then there is 
+                # a self.engine_fail_prob chance that the engine will fail
+                # else, the agent will act as normal
+                if self.random_engine_fail:
+                    if np.random.random() < self.engine_fail_prob:
+                        action = 0
+                    else:
+                        action = self.act(state)
+                else:
+                    action = self.act(state)
+                
                 new_state, reward, done, _, _ = self.env.step(action)
                 frames.append(self.env.render())
 
@@ -135,7 +149,7 @@ class DQL:
 
             if save_episodes:
                 if (episode + 1) % save_interval == 0 or (episode == 0):
-                    s = EpisodeSaver(self.env, frames, 'DQL', episode + 1)
+                    s = EpisodeSaver(self.env, frames, self.fname, episode + 1)
                     s.save()
 
             print(f'[EP {episode + 1}/{n_episodes}] - Reward: {episode_reward:.4f} - Steps: {episode_steps} - Eps: {self.epsilon:.4f} - Time: {time() - start_time:.2f}s')
@@ -149,7 +163,7 @@ class DQL:
         if log_wandb:
             wandb.finish()
 
-        self.save('dql.h5')
+        self.save(f'{self.fname}.h5')
 
         return history
     

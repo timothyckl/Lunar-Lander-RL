@@ -51,8 +51,8 @@ class Buffer(ReplayBuffer):
 
 class DuelingDQL:
     def __init__(self, env, alpha, gamma, epsilon, batch_size=64,
-                epsilon_decay=1e-3, epsilon_min=0.01, 
-                 mem_size=10_000, replace=100):
+                epsilon_decay=1e-3, epsilon_min=0.01, replace=100,
+                random_engine_fail=False, engine_fail_prob=0.5, fname='dueling_dql'):
         self.env = env
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.n
@@ -63,9 +63,12 @@ class DuelingDQL:
         self.epsilon_min = epsilon_min
         self.replace = replace
         self.batch_size = batch_size
+        self.fname = fname
+        self.random_engine_fail = random_engine_fail
+        self.engine_fail_prob = engine_fail_prob
 
         self.update_counter = 0
-        self.memory = Buffer(mem_size, self.state_size, self.action_size)
+        self.memory = Buffer(10_000, self.state_size, self.action_size)
         self.q_eval = DuelingDQN(self.action_size)
         self.q_next = DuelingDQN(self.action_size)
 
@@ -127,7 +130,16 @@ class DuelingDQL:
             frames= []
 
             for _ in range(max_steps):
-                action = self.act(state)
+                # if self.random_engine_fail is true, then there is 
+                # a self.engine_fail_prob chance that the engine will fail
+                # else, the agent will act as normal
+                if self.random_engine_fail:
+                    if np.random.random() < self.engine_fail_prob:
+                        action = 0
+                    else:
+                        action = self.act(state)
+                else:
+                    action = self.act(state)
                 new_state, reward, done, _, _ = self.env.step(action)
                 frames.append(self.env.render())
                 
@@ -151,7 +163,7 @@ class DuelingDQL:
 
             if save_episodes:
                 if (episode + 1) % save_interval == 0 or (episode == 0):
-                    s = EpisodeSaver(self.env, frames, 'DuelingDQL', episode + 1)
+                    s = EpisodeSaver(self.env, frames, self.fname, episode + 1)
                     s.save()
 
             history['reward'].append(episode_reward)
@@ -165,7 +177,7 @@ class DuelingDQL:
         if log_wandb:
             wandb.finish()
 
-        self.save_model('dueling_dqn')
+        self.save_model(self.fname)
 
         return history
 
