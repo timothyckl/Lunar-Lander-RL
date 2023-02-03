@@ -8,7 +8,7 @@ from tensorflow.keras.optimizers import Adam
 from .utils import ReplayBuffer, EpisodeSaver
 
 
-class DQL:
+class DQN:
     def __init__(self, env, alpha, gamma, epsilon, epsilon_decay=0.99, epsilon_min=0.01, 
                  batch_size=64, random_engine_fail=False, engine_fail_prob=0.5, fname='DQL'):
         self.env = env 
